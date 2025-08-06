@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  laravel-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel-api
+    restart: unless-stopped
+    working_dir: /var/www/laravel-api
+    volumes:
+      - ./:/var/www/laravel-api
+      - ./storage/logs:/var/www/laravel-api/storage/logs
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}  # Root password only
+      MYSQL_DATABASE: ${DB_DATABASE}      # Database to create automatically
+    depends_on:
+      - laravel-api-db
+    networks:
+      - laravel-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: laravel-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/laravel-api
+      - ./docker/nginx:/etc/nginx/conf.d
+    depends_on:
+      - laravel-api
+    networks:
+      - laravel-network
+
+  laravel-api-db:
+    image: mysql:8.0
+    container_name: laravel-api-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}  # Only root password
+      MYSQL_DATABASE: ${DB_DATABASE}      # Database to create
+      # REMOVE ALL THESE:
+      # MYSQL_USER: ${DB_USERNAME}
+      # MYSQL_PASSWORD: ${DB_PASSWORD} 
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - laravel-network
+
+  npm:
+    image: node:18
+    container_name: laravel-npm
+    working_dir: /var/www/laravel-api
+    volumes:
+      - ./:/var/www/laravel-api
+    entrypoint: ['npm']
+    networks:
+      - laravel-network
+
+  composer:
+    image: composer:latest
+    container_name: laravel-composer
+    working_dir: /var/www/laravel-api
+    volumes:
+      - ./:/var/www/laravel-api
+    entrypoint: ['composer']
+    networks:
+      - laravel-network
+
+volumes:
+  dbdata:
+    driver: local
+
+networks:
+  laravel-network:
+    driver: bridge
