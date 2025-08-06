@@ -1,66 +1,26 @@
-# Stage 1: Install Composer dependencies
-FROM composer:2.7 AS composer
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-
-RUN composer install \
-    --no-interaction \
-    --no-plugins \
-    --no-scripts \
-    --optimize-autoloader \
-    --ignore-platform-reqs
-
-# Stage 2: Install Node dependencies
-FROM node:20-alpine AS node
-
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-COPY resources/ ./resources/
-COPY vite.config.js ./
-
-RUN npm install && npm run build
-
-# Stage 3: Build the final PHP-FPM image
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    git curl zip unzip libzip-dev \
+    libonig-dev libxml2-dev \
+    npm nodejs nginx supervisor
 
-WORKDIR /var/www/laravel-api
+# Install PHP extensions
+RUN docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl
 
-# Copy Composer dependencies
-COPY --from=composer /app/vendor ./vendor
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy built assets
-COPY --from=node /app/public ./public
+# Set working directory
+WORKDIR /var/www
 
-# Copy application files
-COPY . .
+# Copy Nginx config
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
-# Windows-specific permission fixes
-RUN mkdir -p storage/framework/{sessions,views,cache} \
-    && mkdir -p bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
+# Supervisor config to run PHP-FPM and Nginx together
+RUN mkdir -p /var/log/supervisor
+COPY --chown=www-data:www-data . /var/www
 
-# Generate application key (skip if .env exists)
-RUN if [ ! -f .env ]; then \
-        cp .env.example .env && \
-        php artisan key:generate; \
-    fi
-
-EXPOSE 9000
-
-CMD ["php-fpm"]
+COPY --chown=www-data:www-data . /var/www
+CMD ["sh", "-c", "composer install && php artisan key:generate && php artisan migrate && npm install && npm run build && php artisan serve --host=0.0.0.0 --port=80"]
