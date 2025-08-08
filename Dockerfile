@@ -23,4 +23,4 @@ RUN mkdir -p /var/log/supervisor
 COPY --chown=www-data:www-data . /var/www
 
 COPY --chown=www-data:www-data . /var/www
-CMD ["sh", "-c", "composer install && php artisan key:generate && php artisan migrate && npm install && npm run build && php artisan serve --host=0.0.0.0 --port=80"]
+CMD ["php-fpm"]

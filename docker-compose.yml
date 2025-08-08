@@ -8,8 +8,6 @@ services:
     container_name: laravel-api
     volumes:
       - ./:/var/www
-    ports:
-      - "8000:80"
     depends_on:
       - mysql
     networks:
