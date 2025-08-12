@@ -3,26 +3,24 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Ticket;
-use App\Http\Controllers\Controller;
+// use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Requests\Api\V1\UpdateTicketRequest;
+use App\Http\Resources\TicketResource;
+use Illuminate\Support\Facades\Log;
 
-class ApiV1TicketController extends Controller
+class TicketController extends ApiController
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        return Ticket::all();
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        if ($this->include('user')) {
+            return TicketResource::collection(Ticket::with('user')->paginate());
+        }
+        
+        return TicketResource::collection(Ticket::paginate());
     }
 
     /**
@@ -38,15 +36,14 @@ class ApiV1TicketController extends Controller
      */
     public function show(Ticket $ticket)
     {
-        //
-    }
+        Log::debug('Fech ticke using relationship: {INCLUDE}', ['INCLUDE' => $this->include('user')]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Ticket $ticket)
-    {
-        //
+        if ($this->include('user')) {
+             Log::debug('Loading relationship for user.');
+            return TicketResource::collection(Ticket::with('user')->paginate());
+        }
+
+        return new TicketResource($ticket);
     }
 
     /**
