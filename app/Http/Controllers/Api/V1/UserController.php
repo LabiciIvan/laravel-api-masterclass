@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\UserRegistered;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use App\Http\Resources\UserResource;
@@ -9,7 +10,6 @@ use App\Http\Requests\Api\V1\ReplaceUserRequest;
 use App\Http\Requests\Api\V1\StoreUserRequest;
 use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Policies\V1\UserPolicy;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class UserController extends ApiController
@@ -30,12 +30,14 @@ class UserController extends ApiController
      */
     public function store(StoreUserRequest $request)
     {
-        try {
-            Gate::authorize('create', User::class);
-            return new UserResource(User::create($request->mappedAttributes()));
-        } catch (AuthorizationException $ex) {
-            return $this->error('Not authorized to create a new user', 401);
-        }
+        Gate::authorize('create', User::class);
+
+        $user = User::create($request->mappedAttributes());
+
+        // UserRegistered::dispatch($user);
+        event(new UserRegistered($user));
+
+        return new UserResource($user);
     }
 
     /**
@@ -61,9 +63,7 @@ class UserController extends ApiController
             return new UserResource($user);
 
         } catch (ModelNotFoundException $ex) {
-            return $this->error('User not found', 404);
-        } catch (AuthorizationException $ex) {
-            return $this->error('Not authorized to update a user', 401);
+            return $this->error('User not found', config('responses.http.codes.not_found'));
         }
     }
 
@@ -81,9 +81,7 @@ class UserController extends ApiController
 
             return new UserResource($user);
         } catch (ModelNotFoundException $ex) {
-            return $this->error('User not found', 404);
-        } catch (AuthorizationException $ex) {
-            return $this->error('Not authorized to replace a user', 401);
+            return $this->error('User not found', config('responses.http.codes.not_found'));
         }
     }
 
@@ -101,9 +99,7 @@ class UserController extends ApiController
 
             return $this->ok('User successfuly has been deleted');
         } catch (ModelNotFoundException $ex) {
-            return $this->error('User not found', 404);
-        } catch (AuthorizationException $ex) {
-            return $this->error('Not authorized to delete a user', 401);
+            return $this->error('User not found', config('responses.http.codes.not_found'));
         }
     }
 }
