@@ -21,6 +21,7 @@ final class Abilities {
     public const DeleteUser         = 'user:delete';
 
     public static function getAbilities(User $user): array {
+        // Don't use '*' to grant access to everyting for users.
         if ($user->is_manager) {
             return [
                 self::CreateTicket,
@@ -35,7 +36,7 @@ final class Abilities {
         }
 
         return [
-            self::CreateTicket,
+            self::CreateOwnTicket,
             self::UpdateOwnTicket,
             self::DeleteOwnTicket,
         ];
