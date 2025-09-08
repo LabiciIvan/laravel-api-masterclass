@@ -2,16 +2,16 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Permissions\Abilities;
 
-class StoreTicketRequest extends FormRequest
+class StoreTicketRequest extends BaseTicketRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -21,8 +21,28 @@ class StoreTicketRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            //
+        $rules = [
+            'data.attributes.title' => 'required|string',
+            'data.attributes.description' => 'required|string',
+            'data.attributes.status' => 'required|string|in:A,C,H,X',
+            'data.relationships.author.data.id' => 'required|int'
         ];
+
+        $user = $this->user();
+
+        if ($user->tokenCan(Abilities::CreateOwnTicket)) {
+            // Allow author only of current user making request if his role is not manager or admin.
+            $rules['data.relationships.author.data.id'] .= '|size:' . $user->id;
+        }
+
+        return $rules;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Direct merge the route parameter into the request and bring to validation.
+        if ($this->routeIs('authors.tickets.store')) {
+            $this->merge(['data.relationships.author.data.id' => $this->route('author')]);
+        }
     }
 }
