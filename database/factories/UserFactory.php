@@ -41,4 +41,25 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+
+    /**
+     * Grant user admin priviledge.
+     */
+    public function makeAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_admin' => 1,
+        ]);
+    }
+
+    /**
+     * Grant user manager priviledge.
+     */
+    public function makeManager(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_manager' => 1,
+        ]);
+    }
 }
